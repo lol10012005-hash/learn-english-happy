@@ -6,3 +6,5 @@ compatibility_date = "2026-10-01"
 binding = "DB"
 database_name = "learn-english-happy-db"
 database_id = "f069b8e5-d73f-4e05-8818-5862138de90c"
+[vars]
+GOOGLE_CLIENT_ID = "789600149159-h3hpnkdg8jins86bp12is5imk9i5tkjb.apps.googleusercontent.com"

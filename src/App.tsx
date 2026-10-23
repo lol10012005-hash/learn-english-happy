@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import Placeholder from './pages/Placeholder'
+import Login from './pages/Login'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           path="settings"
           element={<Placeholder title="Cài đặt" note="Giọng đọc, giao diện, quản lý file Google." />}
         />
+        <Route path="login" element={<Login />} />
         <Route
           path="*"
           element={<Placeholder title="Không tìm thấy trang" note="Địa chỉ này không tồn tại." />}
