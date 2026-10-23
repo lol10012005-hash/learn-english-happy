@@ -1,8 +1,10 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { createSessionCookie } from '../../_lib/session'
 
 interface Env {
   DB: D1Database
   GOOGLE_CLIENT_ID: string
+  SESSION_SECRET: string
 }
 
 const GOOGLE_KEYS = createRemoteJWKSet(
@@ -16,6 +18,10 @@ export const onRequestPost = async ({
   request: Request
   env: Env
 }) => {
+  if (!env.SESSION_SECRET) {
+    return Response.json({ error: 'Máy chủ chưa cấu hình SESSION_SECRET' }, { status: 500 })
+  }
+
   let credential = ''
   try {
     const body = (await request.json()) as { credential?: string }
@@ -52,9 +58,19 @@ export const onRequestPost = async ({
       'SELECT id, email, name FROM users WHERE google_sub = ?1',
     )
       .bind(sub)
-      .first()
+      .first<{ id: number; email: string; name: string }>()
 
-    return Response.json({ user })
+    if (!user) {
+      return Response.json({ error: 'Không tạo được người dùng' }, { status: 500 })
+    }
+
+    const cookie = await createSessionCookie(env, user.id)
+    return new Response(JSON.stringify({ user }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookie,
+      },
+    })
   } catch {
     return Response.json({ error: 'Token Google không hợp lệ hoặc đã hết hạn' }, { status: 401 })
   }

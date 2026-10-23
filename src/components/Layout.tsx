@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useAuth } from '../auth/context'
 
 type Theme = 'light' | 'dark'
 
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 
 export default function Layout() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -39,13 +41,19 @@ export default function Layout() {
     <div className="app">
       <header className="topbar">
         <span className="brand">Learn English Happy</span>
-        <button
-          className="theme-btn"
-          aria-label="Đổi giao diện sáng hoặc tối"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        >
-          {theme === 'dark' ? '☀️ Sáng' : '🌙 Tối'}
-        </button>
+        <div className="top-actions">
+          {user && <span className="user-name">{user.name}</span>}
+          <button
+            className="theme-btn"
+            aria-label="Đổi giao diện sáng hoặc tối"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '☀️ Sáng' : '🌙 Tối'}
+          </button>
+          <button className="theme-btn" onClick={logout}>
+            Đăng xuất
+          </button>
+        </div>
       </header>
 
       <nav className="nav" aria-label="Menu chính">

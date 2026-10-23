@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../auth/context'
 import GoogleSignIn from '../components/GoogleSignIn'
 
-type User = { id: number; email: string; name: string }
-
 export default function Login() {
-  const [user, setUser] = useState<User | null>(null)
+  const { user, loading, setUser } = useAuth()
   const [error, setError] = useState('')
 
   async function handleCredential(credential: string) {
@@ -23,21 +23,17 @@ export default function Login() {
     }
   }
 
+  if (loading) return <p className="loading">Đang tải...</p>
+  if (user) return <Navigate to="/" replace />
+
   return (
-    <section className="card">
-      <h1>Đăng nhập</h1>
-      {user ? (
-        <p>
-          Xin chào <strong>{user.name}</strong> ({user.email}). Đăng nhập
-          thành công, mã người dùng của bạn là {user.id}.
-        </p>
-      ) : (
-        <>
-          <p>Đăng nhập bằng tài khoản Google để bắt đầu học.</p>
-          <GoogleSignIn onCredential={handleCredential} />
-        </>
-      )}
-      {error && <p role="alert">Lỗi: {error}</p>}
-    </section>
+    <div className="login-wrap">
+      <section className="card login-card">
+        <h1>Learn English Happy</h1>
+        <p>Đăng nhập bằng tài khoản Google để bắt đầu học.</p>
+        <GoogleSignIn onCredential={handleCredential} />
+        {error && <p role="alert">Lỗi: {error}</p>}
+      </section>
+    </div>
   )
 }
