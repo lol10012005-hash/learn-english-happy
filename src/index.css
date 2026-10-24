@@ -203,3 +203,58 @@ body {
     display: inline;
   }
 }
+.primary-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sheet-preview h2 {
+  margin-bottom: 4px;
+}
+
+.tab-box {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tab-box h3 {
+  margin: 0 0 8px;
+}
+
+.tab-box small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table-scroll td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.table-scroll tr:first-child td {
+  font-weight: 700;
+  background: var(--bg);
+}
