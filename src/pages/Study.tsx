@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import Mode3Play from '../components/Mode3Play'
+import StudyPlay from '../components/StudyPlay'
 import StudyResult from '../components/StudyResult'
 import { fetchStudyWords } from '../study/api'
 import {
   createSession,
   DEFAULT_GAME,
+  MODES,
   pickSession,
+  type Mode,
   type Session,
   type StudyWord,
 } from '../study/engine'
@@ -24,6 +26,7 @@ export default function Study() {
   const [sources, setSources] = useState<LibrarySource[] | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [limit, setLimit] = useState(20)
+  const [mode, setMode] = useState<Mode>(3)
   const [shuffle, setShuffle] = useState(true)
   const [includeAll, setIncludeAll] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -50,7 +53,11 @@ export default function Study() {
   function begin(words: StudyWord[]) {
     const settings = { ...DEFAULT_GAME, shuffle }
     setRuns((r) => r + 1)
-    setPhase({ kind: 'play', session: createSession(words, settings), run: runs + 1 })
+    setPhase({
+      kind: 'play',
+      session: createSession(words, settings, Math.random, mode),
+      run: runs + 1,
+    })
   }
 
   async function handleStart() {
@@ -83,7 +90,7 @@ export default function Study() {
 
   if (phase.kind === 'play') {
     return (
-      <Mode3Play
+      <StudyPlay
         key={phase.run}
         initial={phase.session}
         onFinish={handleFinish}
@@ -107,10 +114,32 @@ export default function Study() {
   return (
     <section className="card">
       <h1>Học từ vựng</h1>
-      <p>
-        Chế độ: <strong>Nhìn nghĩa, gõ từ</strong> (các chế độ điền câu và
-        hoàn thành từ sẽ được thêm ở bước sau).
-      </p>
+
+      <fieldset className="mode-pick">
+        <legend>Chế độ học</legend>
+        {([1, 2, 3] as Mode[]).map((m) => (
+          <label key={m} className={mode === m ? 'mode-card active' : 'mode-card'}>
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === m}
+              onChange={() => setMode(m)}
+            />
+            <span>
+              <strong>
+                {m}. {MODES[m].name}
+              </strong>
+              <br />
+              <small>{MODES[m].desc}</small>
+            </span>
+          </label>
+        ))}
+        {mode === 1 && (
+          <p className="mode-note">
+            Từ nào chưa có câu ví dụ trong Sheet sẽ hiện nghĩa thay cho câu.
+          </p>
+        )}
+      </fieldset>
 
       {sources === null && !error && <p className="loading">Đang tải...</p>}
       {sources && !hasUnits && (

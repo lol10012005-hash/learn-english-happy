@@ -562,3 +562,100 @@ summary {
   color: #30a46c;
   font-weight: 700;
 }
+
+.mode-pick {
+  margin: 0 0 16px;
+  padding: 8px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.mode-pick legend {
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.mode-card.active {
+  border-color: var(--primary);
+}
+
+.mode-card input {
+  width: 20px;
+  height: 20px;
+}
+
+.mode-card small,
+.mode-note {
+  color: var(--muted);
+}
+
+.mode-note {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+
+.mode-tag {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.link-btn-plain {
+  margin-left: 0;
+}
+
+.play-masked {
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 0.15em;
+  word-break: break-word;
+}
+
+.play-meaning {
+  margin: -4px 0 12px;
+  color: var(--muted);
+}
+
+.pts {
+  display: inline-block;
+  color: #30a46c;
+}
+
+@keyframes fx-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+@keyframes fx-pop {
+  0% { transform: scale(0.9); opacity: 0.4; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.fx-shake {
+  animation: fx-shake 0.35s;
+}
+
+.fx-pop {
+  animation: fx-pop 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-shake,
+  .fx-pop {
+    animation: none;
+  }
+}

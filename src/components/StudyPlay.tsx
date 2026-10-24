@@ -3,12 +3,15 @@ import {
   advance,
   checkAnswer,
   currentWord,
+  exampleFilled,
   giveUp,
   hint,
-  hintText,
+  hintLines,
   maxHint,
+  MODES,
   type Session,
 } from '../study/engine'
+import { isMuted, playEvent, setMuted } from '../study/sound'
 import { speak } from '../study/speech'
 
 type Props = {
@@ -21,9 +24,16 @@ const CORRECT_MSG = ['Chính xác!', 'Tuyệt vời!', 'Giỏi lắm!', 'Đúng 
 const WRONG_MSG = ['Chưa đúng, thử lại nhé', 'Gần đúng rồi, cố lên!', 'Hãy nhớ lại xem nào']
 const CORRECT_DELAY_MS = 900
 
-export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
+const LABELS = {
+  meaning: 'Gõ từ có nghĩa này:',
+  sentence: 'Điền từ còn thiếu vào câu:',
+  masked: 'Hoàn thành từ còn thiếu chữ:',
+} as const
+
+export default function StudyPlay({ initial, onFinish, onQuit }: Props) {
   const [session, setSession] = useState<Session>(initial)
   const [buf, setBuf] = useState('')
+  const [muted, setMutedState] = useState(isMuted())
   const inputRef = useRef<HTMLInputElement>(null)
   const word = currentWord(session)
 
@@ -31,6 +41,11 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
   useEffect(() => {
     if (session.over) onFinish(session)
   }, [session, onFinish])
+
+  // Phát âm thanh theo sự kiện của thao tác vừa rồi
+  useEffect(() => {
+    session.events.forEach(playEvent)
+  }, [session])
 
   // Đúng thì tự sang từ kế tiếp sau một chút
   useEffect(() => {
@@ -42,9 +57,14 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
     return () => window.clearTimeout(t)
   }, [session.state, session.index])
 
+  // Thẻ mới: đưa con trỏ vào ô gõ; chế độ 2 tự đọc từ
   useEffect(() => {
     inputRef.current?.focus()
-  }, [session.index])
+    if (session.mode === 2) {
+      const w = session.words[session.index]
+      if (w) speak(w.word)
+    }
+  }, [session.index, session.mode, session.words])
 
   function handleChange(value: string) {
     if (session.state !== 'ask') return
@@ -66,12 +86,19 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
     }
   }
 
+  function toggleMute() {
+    setMuted(!muted)
+    setMutedState(!muted)
+  }
+
   if (!word || session.over) return <p className="loading">Đang tổng hợp kết quả...</p>
 
   const done = session.index + (session.state !== 'ask' ? 1 : 0)
   const percent = Math.round((done / session.words.length) * 100)
-  const hints = hintText(session)
+  const hints = hintLines(session)
   const canHint = session.state === 'ask' && session.hintLevel < maxHint(session)
+  const filled = exampleFilled(word)
+  const card = session.card
 
   return (
     <section className="card play">
@@ -82,8 +109,14 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
         </span>
         <span>Điểm: <strong>{session.score}</strong></span>
         <span>Chuỗi đúng: <strong>{session.combo}</strong></span>
-        <button className="link-btn" onClick={onQuit}>Thoát</button>
+        <button className="link-btn" onClick={toggleMute}>
+          {muted ? '🔇 Âm thanh: Tắt' : '🔊 Âm thanh: Bật'}
+        </button>
+        <button className="link-btn link-btn-plain" onClick={onQuit}>
+          Thoát
+        </button>
       </div>
+      <p className="mode-tag">Chế độ {session.mode}: {MODES[session.mode].name}</p>
       <div
         className="progress"
         role="progressbar"
@@ -94,8 +127,13 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
         <div className="progress-bar" style={{ width: `${percent}%` }} />
       </div>
 
-      <p className="play-label">Gõ từ có nghĩa này:</p>
-      <p className="play-prompt">{word.meaning}</p>
+      <p className="play-label">{LABELS[card.kind]}</p>
+      <p className={card.kind === 'masked' ? 'play-prompt play-masked' : 'play-prompt'}>
+        {card.prompt}
+      </p>
+      {card.kind === 'masked' && card.meaningVisible && (
+        <p className="play-meaning">Nghĩa: {word.meaning}</p>
+      )}
 
       <p className="lives" aria-label={`Còn ${session.livesLeft} lần thử`}>
         {Array.from({ length: session.settings.lives }, (_, i) =>
@@ -122,29 +160,34 @@ export default function Mode3Play({ initial, onFinish, onQuit }: Props) {
       />
 
       {session.state === 'ask' && session.lastBad && (
-        <p className="msg-wrong" role="status">
-          ✗ <s>{session.lastBad}</s> —{' '}
-          {WRONG_MSG[session.wrongN % WRONG_MSG.length]}
+        <p key={session.bad} className="msg-wrong fx-shake" role="status">
+          ✗ <s>{session.lastBad}</s> — {WRONG_MSG[session.wrongN % WRONG_MSG.length]}
         </p>
       )}
-      {hints && <p className="hint-text">{hints}</p>}
+      {hints.map((line) => (
+        <p key={line} className="hint-text">{line}</p>
+      ))}
 
       {session.state === 'correct' && (
-        <p className="msg-correct" role="status">
+        <p key={session.index} className="msg-correct fx-pop" role="status">
           ✓ {CORRECT_MSG[(session.index + session.score) % CORRECT_MSG.length]}{' '}
-          <strong>+{session.lastPts}</strong>
-          {session.events.includes('combo') && (
-            <> · Chuỗi đúng ×{session.combo}!</>
+          <strong className="pts">+{session.lastPts}</strong>
+          {session.events.includes('combo') && <> · Chuỗi đúng ×{session.combo}! 🔥</>}
+          {filled && (
+            <>
+              <br />
+              <small>{filled}</small>
+            </>
           )}
         </p>
       )}
       {session.state === 'failed' && (
         <p className="msg-fail" role="status">
           ✗ Hết lượt. Đáp án đúng là: <strong>{word.word}</strong>
-          {word.example && (
+          {(filled || word.meaning) && (
             <>
               <br />
-              <small>{word.example}</small>
+              <small>{[word.meaning, filled].filter(Boolean).join(' · ')}</small>
             </>
           )}
         </p>

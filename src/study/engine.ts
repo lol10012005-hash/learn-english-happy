@@ -20,6 +20,7 @@ export type GameSettings = {
   autoHintAfterWrong: number // sai mấy lần thì tự hiện gợi ý (0 = tắt)
   autoSubmit: boolean // gõ đúng là tự chấm
   shuffle: boolean
+  showMeaningMode2: boolean // chế độ 2: hiện nghĩa cạnh từ bị che
 }
 
 export const DEFAULT_GAME: GameSettings = {
@@ -29,6 +30,14 @@ export const DEFAULT_GAME: GameSettings = {
   autoHintAfterWrong: 2,
   autoSubmit: true,
   shuffle: true,
+  showMeaningMode2: true,
+}
+
+export type Mode = 1 | 2 | 3
+export const MODES: Record<Mode, { name: string; desc: string }> = {
+  1: { name: 'Điền vào câu', desc: 'Điền từ còn thiếu vào câu ví dụ' },
+  2: { name: 'Hoàn thành từ', desc: 'Từ bị che 40% chữ, gõ lại đủ từ' },
+  3: { name: 'Nhìn nghĩa, gõ từ', desc: 'Đọc nghĩa tiếng Việt rồi gõ từ' },
 }
 
 export type MasterySettings = {
@@ -59,7 +68,18 @@ export type Stat = {
 export type CardState = 'ask' | 'correct' | 'failed'
 export type GameEvent = 'correct' | 'wrong' | 'fail' | 'combo' | 'done' | 'click'
 
+export type CardKind = 'meaning' | 'sentence' | 'masked'
+export type Card = {
+  kind: CardKind
+  prompt: string // nội dung hiển thị làm đề
+  accepted: string[] // các đáp án được nhận (đã chuẩn hóa)
+  meaningVisible: boolean // nghĩa đã hiện sẵn chưa (chưa thì là bước gợi ý đầu tiên)
+}
+
 export type Session = {
+  mode: Mode
+  card: Card
+  rng: Rng
   settings: GameSettings
   words: StudyWord[]
   stats: Stat[]
@@ -95,7 +115,105 @@ export function normalize(s: string): string {
   return s.normalize('NFC').trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-function cardReset(settings: GameSettings) {
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// Các dạng đơn giản của từ: -s, -es, -ed, -d, -ing, bỏ e + ing, y -> ies/ied, gấp đôi phụ âm cuối
+function wordForms(w: string): string[] {
+  const forms = new Set([w, w + 's', w + 'es', w + 'ed', w + 'd', w + 'ing'])
+  const last = w.slice(-1)
+  if (w.endsWith('e')) forms.add(w.slice(0, -1) + 'ing')
+  if (/[^aeiou]y$/i.test(w)) {
+    forms.add(w.slice(0, -1) + 'ies')
+    forms.add(w.slice(0, -1) + 'ied')
+  }
+  if (/[b-df-hj-np-tv-z]/i.test(last)) {
+    forms.add(w + last + 'ed')
+    forms.add(w + last + 'ing')
+  }
+  return [...forms].sort((a, b) => b.length - a.length)
+}
+
+// Che từ cần học trong câu ví dụ. Nhận cả câu đã có sẵn [____] (kiểu bản desktop).
+export function blankExample(
+  example: string,
+  word: string,
+): { text: string; form: string } | null {
+  const ex = example.trim()
+  const w = word.trim()
+  if (!ex || !w) return null
+  if (/\[_+\]/.test(ex)) return { text: ex.replace(/\[_+\]/g, '____'), form: w }
+  const alts = wordForms(w)
+    .map((f) => escapeRe(f).replace(/ +/g, '\\s+'))
+    .join('|')
+  const re = new RegExp(`(^|[^\\p{L}\\p{N}])(${alts})(?![\\p{L}\\p{N}])`, 'iu')
+  const m = re.exec(ex)
+  if (!m) return null
+  const [, lead, form] = m
+  const text = ex.slice(0, m.index) + lead + '____' + ex.slice(m.index + lead.length + form.length)
+  return { text, form }
+}
+
+// Che khoảng 40% chữ, không che chữ đầu và dấu cách (như bản desktop)
+export function maskWord(word: string, rng: Rng = Math.random): string {
+  const chars = Array.from(word)
+  const pool: number[] = []
+  chars.forEach((c, i) => {
+    if (chars.length < 2 || (i > 0 && c !== ' ')) pool.push(i)
+  })
+  const count = Math.min(pool.length, Math.max(1, Math.round(chars.length * 0.4)))
+  for (const i of shuffle(pool, rng).slice(0, count)) chars[i] = '_'
+  return chars.join(' ')
+}
+
+export function buildCard(
+  word: StudyWord,
+  mode: Mode,
+  settings: GameSettings,
+  rng: Rng,
+): Card {
+  const answer = normalize(word.word)
+  if (mode === 2) {
+    return {
+      kind: 'masked',
+      prompt: maskWord(word.word, rng),
+      accepted: [answer],
+      meaningVisible: settings.showMeaningMode2,
+    }
+  }
+  if (mode === 1) {
+    const b = blankExample(word.example, word.word)
+    if (b) {
+      const form = normalize(b.form)
+      return {
+        kind: 'sentence',
+        prompt: b.text,
+        accepted: form === answer ? [answer] : [answer, form],
+        meaningVisible: false,
+      }
+    }
+  }
+  // Chế độ 3, hoặc chế độ 1 mà từ không có câu ví dụ: hiện nghĩa
+  return {
+    kind: 'meaning',
+    prompt: word.meaning || word.word,
+    accepted: [answer],
+    meaningVisible: true,
+  }
+}
+
+// Câu ví dụ đã điền từ (hiện sau khi trả lời)
+export function exampleFilled(w: StudyWord): string {
+  return w.example ? w.example.replace(/\[_+\]/g, w.word) : ''
+}
+
+function cardFor(
+  word: StudyWord | undefined,
+  mode: Mode,
+  settings: GameSettings,
+  rng: Rng,
+) {
   return {
     state: 'ask' as CardState,
     livesLeft: settings.lives,
@@ -104,6 +222,9 @@ function cardReset(settings: GameSettings) {
     cardHints: 0,
     lastPts: 0,
     lastBad: '',
+    card: word
+      ? buildCard(word, mode, settings, rng)
+      : { kind: 'meaning' as CardKind, prompt: '', accepted: [], meaningVisible: true },
   }
 }
 
@@ -111,9 +232,12 @@ export function createSession(
   words: StudyWord[],
   settings: GameSettings = DEFAULT_GAME,
   rng: Rng = Math.random,
+  mode: Mode = 3,
 ): Session {
   const list = settings.shuffle ? shuffle(words, rng) : [...words]
   return {
+    mode,
+    rng,
     settings,
     words: list,
     stats: list.map((word) => ({
@@ -131,7 +255,7 @@ export function createSession(
     firstTry: 0,
     bad: 0,
     events: [],
-    ...cardReset(settings),
+    ...cardFor(list[0], mode, settings, rng),
   }
 }
 
@@ -139,17 +263,34 @@ export function currentWord(s: Session): StudyWord | null {
   return s.words[s.index] ?? null
 }
 
-// Số gợi ý tối đa: hiện dần từng chữ, chừa lại ít nhất 1 chữ
+function needsMeaningStep(s: Session): boolean {
+  const w = currentWord(s)
+  return !!w && !s.card.meaningVisible && !!w.meaning
+}
+
+// Gợi ý tối đa: hiện dần từng chữ (chừa lại ít nhất 1 chữ), cộng thêm bước "hiện nghĩa" nếu nghĩa đang ẩn
 export function maxHint(s: Session): number {
   const w = currentWord(s)
-  return w ? Math.max(0, Array.from(w.word).length - 1) : 0
+  if (!w) return 0
+  return Math.max(0, Array.from(w.word).length - 1) + (needsMeaningStep(s) ? 1 : 0)
+}
+
+export function hintLines(s: Session): string[] {
+  const w = currentWord(s)
+  if (!w) return []
+  const needs = needsMeaningStep(s)
+  const out: string[] = []
+  if (needs && s.hintLevel >= 1) out.push('Nghĩa: ' + w.meaning)
+  const k = s.hintLevel - (needs ? 1 : 0)
+  if (k > 0) {
+    const chars = Array.from(w.word)
+    out.push(`Gợi ý: ${chars.slice(0, k).join(' ')} …  (${chars.length} chữ)`)
+  }
+  return out
 }
 
 export function hintText(s: Session): string {
-  const w = currentWord(s)
-  if (!w || s.hintLevel <= 0) return ''
-  const chars = Array.from(w.word)
-  return `Gợi ý: ${chars.slice(0, s.hintLevel).join(' ')} …  (${chars.length} chữ)`
+  return hintLines(s).join('\n')
 }
 
 function patchStat(s: Session, patch: Partial<Stat>): Stat[] {
@@ -226,7 +367,7 @@ export function checkAnswer(s: Session, input: string, force: boolean): Session 
   if (!w || s.over || s.state !== 'ask') return s
   const v = normalize(input)
   if (!v) return s
-  if (v === normalize(w.word)) return markCorrect(s)
+  if (s.card.accepted.includes(v)) return markCorrect(s)
   if (force) return markWrong(s, input)
   return s
 }
@@ -240,7 +381,12 @@ export function advance(s: Session): Session {
   if (s.over || s.state === 'ask') return s
   const index = s.index + 1
   if (index >= s.words.length) return { ...s, index, over: true, events: ['done'] }
-  return { ...s, index, events: [], ...cardReset(s.settings) }
+  return {
+    ...s,
+    index,
+    events: [],
+    ...cardFor(s.words[index], s.mode, s.settings, s.rng),
+  }
 }
 
 // ----- Đánh giá mức độ thuộc (port từ data/srs.py)
