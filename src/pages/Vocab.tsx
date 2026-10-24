@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import TabPreview from '../components/TabPreview'
 import {
   pickSpreadsheet,
   preloadGoogle,
@@ -10,6 +11,7 @@ export default function Vocab() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState<SheetData | null>(null)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
     preloadGoogle().catch(() => {
@@ -25,6 +27,7 @@ export default function Vocab() {
       const file = await pickSpreadsheet(token)
       if (!file) return
       setData(await readSpreadsheet(file.id, token))
+      setVersion((v) => v + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Có lỗi xảy ra')
     } finally {
@@ -44,26 +47,12 @@ export default function Vocab() {
       {data && (
         <div className="sheet-preview">
           <h2>{data.title}</h2>
-          <p>Tìm thấy {data.tabs.length} quyển (trang tính).</p>
+          <p>
+            Tìm thấy {data.tabs.length} quyển (trang tính). Kiểm tra cột được
+            nhận, sửa lại nếu sai.
+          </p>
           {data.tabs.map((tab) => (
-            <div key={tab.title} className="tab-box">
-              <h3>
-                {tab.title} <small>({Math.max(tab.rows.length - 1, 0)} dòng dữ liệu)</small>
-              </h3>
-              <div className="table-scroll">
-                <table>
-                  <tbody>
-                    {tab.rows.slice(0, 6).map((row, r) => (
-                      <tr key={r}>
-                        {row.slice(0, 6).map((cell, c) => (
-                          <td key={c}>{cell}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <TabPreview key={`${version}-${tab.title}`} tab={tab} />
           ))}
         </div>
       )}
