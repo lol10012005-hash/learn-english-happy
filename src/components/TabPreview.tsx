@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { SheetTab } from '../google/sheets'
 import {
   COLUMN_LABELS,
   COLUMN_ORDER,
-  detectMapping,
   parseTab,
   type ColumnKey,
   type Mapping,
@@ -13,18 +12,21 @@ function columnLetter(i: number): string {
   return String.fromCharCode(65 + (i % 26))
 }
 
-export default function TabPreview({ tab }: { tab: SheetTab }) {
+type Props = {
+  tab: SheetTab
+  mapping: Mapping
+  onMappingChange: (mapping: Mapping) => void
+}
+
+export default function TabPreview({ tab, mapping, onMappingChange }: Props) {
   const header = tab.rows[0] ?? []
-  const [mapping, setMapping] = useState<Mapping>(() => detectMapping(header))
   const result = useMemo(() => parseTab(tab.rows, mapping), [tab.rows, mapping])
 
   function change(key: ColumnKey, value: string) {
-    setMapping((prev) => {
-      const next = { ...prev }
-      if (value === '') delete next[key]
-      else next[key] = Number(value)
-      return next
-    })
+    const next = { ...mapping }
+    if (value === '') delete next[key]
+    else next[key] = Number(value)
+    onMappingChange(next)
   }
 
   return (
