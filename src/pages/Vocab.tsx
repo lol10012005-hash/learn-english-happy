@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import Library from '../components/Library'
 import TabPreview from '../components/TabPreview'
@@ -89,6 +90,11 @@ export default function Vocab() {
   return (
     <section className="card">
       <h1>Từ vựng</h1>
+      <p>
+        <Link className="primary-btn link-as-btn" to="/study">
+          Bắt đầu học ➜
+        </Link>
+      </p>
 
       <Library
         reloadKey={reloadKey}

@@ -4,6 +4,7 @@ import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
 import Placeholder from './pages/Placeholder'
 import Vocab from './pages/Vocab'
+import Study from './pages/Study'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
             element={<Placeholder title="Tổng quan" note="Từ đến hạn ôn, streak và bài nghe chép gần đây sẽ hiện ở đây." />}
           />
           <Route path="vocab" element={<Vocab />} />
+          <Route path="study" element={<Study />} />
           <Route
             path="dictation"
             element={<Placeholder title="Nghe chép" note="Danh sách bài nghe chép sẽ hiện ở đây." />}
