@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import StudyPlay from '../components/StudyPlay'
 import StudyResult from '../components/StudyResult'
+import { saveSession, todayIso, type SaveState } from '../progress/api'
 import { fetchStudyWords } from '../study/api'
 import {
   createSession,
@@ -17,11 +18,12 @@ import { fetchLibrary, type LibrarySource } from '../vocab/api'
 type Phase =
   | { kind: 'select' }
   | { kind: 'play'; session: Session; run: number }
-  | { kind: 'result'; session: Session }
-
-const todayIso = () => new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD
+  | { kind: 'result'; session: Session; save: SaveState }
 
 export default function Study() {
+  const [params] = useSearchParams()
+  const review = params.get('review') === '1'
+
   const [phase, setPhase] = useState<Phase>({ kind: 'select' })
   const [sources, setSources] = useState<LibrarySource[] | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -32,14 +34,27 @@ export default function Study() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [runs, setRuns] = useState(0)
+  const savedRef = useRef(new WeakSet<Session>())
 
   useEffect(() => {
     fetchLibrary()
-      .then((d) => setSources(d.sources))
+      .then((d) => {
+        setSources(d.sources)
+        // Từ trang Tổng quan bấm "Ôn từ đến hạn": chọn sẵn tất cả unit
+        if (review) {
+          setSelected(
+            new Set(
+              d.sources.flatMap((s) =>
+                s.books.flatMap((b) => b.units.map((u) => u.id)),
+              ),
+            ),
+          )
+        }
+      })
       .catch((e) =>
         setError(e instanceof Error ? e.message : 'Không tải được thư viện'),
       )
-  }, [])
+  }, [review])
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -84,9 +99,32 @@ export default function Study() {
     }
   }
 
-  const handleFinish = useCallback((session: Session) => {
-    setPhase({ kind: 'result', session })
+  // Lưu kết quả lượt học (SM-2, chuỗi ngày, thống kê)
+  const persist = useCallback(async (session: Session, unitIds: number[]) => {
+    setPhase({ kind: 'result', session, save: { status: 'saving' } })
+    const update = (save: SaveState) =>
+      setPhase((p) =>
+        p.kind === 'result' && p.session === session ? { ...p, save } : p,
+      )
+    try {
+      const info = await saveSession(session, unitIds)
+      update({ status: 'saved', info })
+    } catch (e) {
+      update({
+        status: 'error',
+        message: e instanceof Error ? e.message : 'Lỗi không xác định',
+      })
+    }
   }, [])
+
+  const handleFinish = useCallback(
+    (session: Session) => {
+      if (savedRef.current.has(session)) return
+      savedRef.current.add(session)
+      void persist(session, [...selected])
+    },
+    [persist, selected],
+  )
 
   if (phase.kind === 'play') {
     return (
@@ -103,6 +141,8 @@ export default function Study() {
     return (
       <StudyResult
         session={phase.session}
+        save={phase.save}
+        onRetrySave={() => void persist(phase.session, [...selected])}
         onPracticeWeak={begin}
         onNew={() => setPhase({ kind: 'select' })}
       />
@@ -114,6 +154,11 @@ export default function Study() {
   return (
     <section className="card">
       <h1>Học từ vựng</h1>
+      {review && (
+        <p className="mode-note">
+          Đã chọn tất cả unit. Từ đến hạn ôn được xếp trước, rồi đến từ mới.
+        </p>
+      )}
 
       <fieldset className="mode-pick">
         <legend>Chế độ học</legend>

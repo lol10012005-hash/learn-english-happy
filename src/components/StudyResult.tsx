@@ -1,3 +1,4 @@
+import type { SaveState } from '../progress/api'
 import {
   evaluate,
   LEVEL_NAMES,
@@ -10,13 +11,21 @@ import {
 
 type Props = {
   session: Session
+  save: SaveState
+  onRetrySave: () => void
   onPracticeWeak: (words: StudyWord[]) => void
   onNew: () => void
 }
 
 const LEVEL_ICON: Record<Level, string> = { 0: '✗', 1: '△', 2: '✓' }
 
-export default function StudyResult({ session, onPracticeWeak, onNew }: Props) {
+export default function StudyResult({
+  session,
+  save,
+  onRetrySave,
+  onPracticeWeak,
+  onNew,
+}: Props) {
   const { evals, counts } = evaluate(session.stats)
   const level = verdict(counts)
   const weak = evals.filter((e) => e.level < 2).map((e) => e.stat.word)
@@ -30,6 +39,40 @@ export default function StudyResult({ session, onPracticeWeak, onNew }: Props) {
           <p>{VERDICTS[level].text}</p>
         </div>
       )}
+
+      <div className="save-box" role="status">
+        {save.status === 'saving' && <p>Đang lưu tiến trình...</p>}
+        {save.status === 'saved' && (
+          <>
+            <p>
+              ✓ Đã lưu tiến trình và lên lịch ôn lại cho{' '}
+              <strong>{save.info.updated}</strong> từ.
+            </p>
+            <p>
+              {save.info.streak.current > 0 ? (
+                <>
+                  🔥 Chuỗi <strong>{save.info.streak.current}</strong> ngày
+                  {save.info.streak.inc
+                    ? ' — +1 hôm nay!'
+                    : ' — đã giữ chuỗi hôm nay'}
+                </>
+              ) : (
+                'Chưa có chuỗi ngày (cần đúng ít nhất 1 từ trong lượt học).'
+              )}
+            </p>
+          </>
+        )}
+        {save.status === 'error' && (
+          <>
+            <p role="alert">
+              Chưa lưu được tiến trình: {save.message}
+            </p>
+            <button className="ghost-btn" onClick={onRetrySave}>
+              Thử lưu lại
+            </button>
+          </>
+        )}
+      </div>
 
       <ul className="unit-list">
         <li>Điểm: <strong>{session.score}</strong></li>
