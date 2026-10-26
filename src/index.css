@@ -816,3 +816,154 @@ summary {
   border-radius: 3px;
   vertical-align: -1px;
 }
+
+.step-box {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.step-result {
+  margin-top: 12px;
+}
+
+.script-preview {
+  max-height: 180px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.audio-preview {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.lesson-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.lesson-item small {
+  color: var(--muted);
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.player {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.player-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.player-play {
+  min-width: 130px;
+  min-height: 52px;
+  font-size: 1.1rem;
+}
+
+.player-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-bar input[type='range'] {
+  flex: 1;
+  height: 28px;
+}
+
+.speed-btns {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.speed-btn {
+  min-width: 64px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.speed-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 700;
+}
+
+.typing-label {
+  margin-top: 16px;
+}
+
+.typing-box {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.typing-box:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.mode-switch {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tts-hint {
+  margin: 8px 0 12px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.player-bar progress {
+  flex: 1;
+  height: 12px;
+}

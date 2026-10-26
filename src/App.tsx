@@ -7,6 +7,9 @@ import Vocab from './pages/Vocab'
 import Study from './pages/Study'
 import Overview from './pages/Overview'
 import Stats from './pages/Stats'
+import DictationList from './pages/DictationList'
+import DictationNew from './pages/DictationNew'
+import DictationPlay from './pages/DictationPlay'
 
 export default function App() {
   return (
@@ -17,10 +20,9 @@ export default function App() {
           <Route index element={<Overview />} />
           <Route path="vocab" element={<Vocab />} />
           <Route path="study" element={<Study />} />
-          <Route
-            path="dictation"
-            element={<Placeholder title="Nghe chép" note="Danh sách bài nghe chép sẽ hiện ở đây." />}
-          />
+          <Route path="dictation" element={<DictationList />} />
+          <Route path="dictation/new" element={<DictationNew />} />
+          <Route path="dictation/:id" element={<DictationPlay />} />
           <Route path="stats" element={<Stats />} />
           <Route
             path="settings"

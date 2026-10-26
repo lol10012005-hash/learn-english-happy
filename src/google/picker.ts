@@ -54,15 +54,44 @@ export async function requestAccessToken(): Promise<string> {
   })
 }
 
-export type PickedFile = { id: string; name: string }
+export type PickedFile = { id: string; name: string; mimeType: string }
 
-export async function pickSpreadsheet(token: string): Promise<PickedFile | null> {
+// sheet = Google Sheet, doc = Google Docs, audio = file âm thanh, any = mọi loại file
+export type PickKind = 'sheet' | 'doc' | 'audio' | 'any'
+
+const AUDIO_MIME_TYPES = [
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/aac',
+  'audio/ogg',
+  'audio/webm',
+].join(',')
+
+export async function pickFile(
+  token: string,
+  kind: PickKind,
+): Promise<PickedFile | null> {
   await loadScript(GAPI_SRC, () => !!window.gapi)
   await new Promise<void>((resolve) => window.gapi!.load('picker', () => resolve()))
 
   const picker = window.google!.picker!
+  const viewId =
+    kind === 'sheet'
+      ? picker.ViewId.SPREADSHEETS
+      : kind === 'doc'
+        ? picker.ViewId.DOCUMENTS
+        : picker.ViewId.DOCS
+
   return new Promise((resolve) => {
-    const view = new picker.DocsView(picker.ViewId.SPREADSHEETS)
+    const view = new picker.DocsView(viewId)
+    if (kind === 'audio') view.setMimeTypes(AUDIO_MIME_TYPES)
+    if (kind === 'audio' || kind === 'any') view.setIncludeFolders(true)
     new picker.PickerBuilder()
       .setAppId(GOOGLE_PROJECT_NUMBER)
       .setOAuthToken(token)
@@ -71,7 +100,8 @@ export async function pickSpreadsheet(token: string): Promise<PickedFile | null>
       .addView(view)
       .setCallback((data) => {
         if (data.action === picker.Action.PICKED && data.docs?.[0]) {
-          resolve({ id: data.docs[0].id, name: data.docs[0].name })
+          const d = data.docs[0]
+          resolve({ id: d.id, name: d.name, mimeType: d.mimeType })
         } else if (data.action === picker.Action.CANCEL) {
           resolve(null)
         }
@@ -79,4 +109,8 @@ export async function pickSpreadsheet(token: string): Promise<PickedFile | null>
       .build()
       .setVisible(true)
   })
+}
+
+export function pickSpreadsheet(token: string): Promise<PickedFile | null> {
+  return pickFile(token, 'sheet')
 }

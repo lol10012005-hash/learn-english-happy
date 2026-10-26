@@ -16,6 +16,11 @@ interface GooglePickerResult {
   docs?: Array<{ id: string; name: string; mimeType: string }>
 }
 
+interface GoogleDocsView {
+  setMimeTypes: (types: string) => GoogleDocsView
+  setIncludeFolders: (include: boolean) => GoogleDocsView
+}
+
 interface GooglePickerBuilder {
   setAppId: (id: string) => GooglePickerBuilder
   setOAuthToken: (token: string) => GooglePickerBuilder
@@ -53,8 +58,8 @@ interface Window {
     }
     picker?: {
       PickerBuilder: new () => GooglePickerBuilder
-      DocsView: new (viewId?: string) => object
-      ViewId: { SPREADSHEETS: string }
+      DocsView: new (viewId?: string) => GoogleDocsView
+      ViewId: { SPREADSHEETS: string; DOCUMENTS: string; DOCS: string }
       Action: { PICKED: string; CANCEL: string }
     }
   }
