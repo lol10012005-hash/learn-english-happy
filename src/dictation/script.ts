@@ -2,6 +2,7 @@
 // - Dòng bắt đầu bằng # là ghi chú, không chấm.
 // - Dòng bắt đầu bằng [mm:ss] (hoặc [h:mm:ss]) đánh dấu thời điểm câu bắt đầu trong audio.
 
+import { countTokens } from './diff'
 export type Cue = { t: number; text: string } // t = giây
 
 export type ParsedScript = {
@@ -57,6 +58,7 @@ export function parseScript(raw: string): ParsedScript {
 }
 
 // Đếm số từ: chuỗi chữ hoặc số, giữ nguyên từ có dấu nháy hoặc gạch nối (don't, well-known)
+// Đếm số từ theo đúng cách bộ chấm tách từ (don't, well-known, 3.5 và 1,000 đều tính là 1 từ)
 export function countWords(text: string): number {
-  return text.match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu)?.length ?? 0
+  return countTokens(text)
 }

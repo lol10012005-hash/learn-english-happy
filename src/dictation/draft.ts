@@ -36,3 +36,22 @@ export function clearDraft(userId: number, lessonId: number): void {
     // bỏ qua
   }
 }
+
+// Lựa chọn "chấm cả dấu câu và chữ hoa" (nhớ theo thiết bị)
+const STRICT_KEY = 'leh:dict:strict'
+
+export function loadStrict(): boolean {
+  try {
+    return localStorage.getItem(STRICT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function saveStrict(value: boolean): void {
+  try {
+    localStorage.setItem(STRICT_KEY, value ? '1' : '0')
+  } catch {
+    // bỏ qua
+  }
+}

@@ -7,6 +7,9 @@ export type LessonSummary = {
   hasCues: boolean
   audioName: string | null
   createdAt: string
+  bestScore: number | null
+  attempts: number
+  lastAttemptAt: string | null
 }
 
 export type Lesson = {
@@ -58,4 +61,45 @@ export function createLesson(payload: CreateLessonPayload) {
 
 export function deleteLesson(id: number) {
   return request<{ ok: true }>(`/api/dictation/lessons/${id}`, { method: 'DELETE' })
+}
+
+// ----- Kết quả làm bài
+
+export type AttemptSave =
+  | { status: 'saving' }
+  | { status: 'saved' }
+  | { status: 'error'; message: string }
+
+export type AttemptPayload = {
+  lessonId: number
+  typedText: string
+  listens: number
+  strict: boolean
+  counts: { correct: number; spelling: number; misheard: number; missing: number; extra: number }
+  errors: Array<[string, string, string]> // [loại, từ gốc, từ gõ]
+}
+
+export function saveAttempt(payload: AttemptPayload) {
+  return request<{ id: number; listenPct: number; typePct: number; score: number }>(
+    '/api/dictation/attempts',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
+export type AttemptRow = {
+  id: number
+  createdAt: string
+  listenPct: number
+  typePct: number
+  score: number
+  listens: number
+  strict: boolean
+}
+
+export function fetchAttempts(lessonId: number) {
+  return request<{ attempts: AttemptRow[] }>(`/api/dictation/attempts?lessonId=${lessonId}`)
 }

@@ -60,6 +60,14 @@ export default function DictationList() {
                 {l.words} từ · {l.hasCues ? 'có mốc thời gian · ' : ''}
                 {l.audioName ?? 'giọng đọc của trình duyệt'} · {formatDate(l.createdAt)}
               </small>
+              <br />
+              <small>
+                {l.attempts > 0
+                  ? `Điểm cao nhất ${l.bestScore}% · ${l.attempts} lần làm${
+                      l.lastAttemptAt ? ` · gần nhất ${formatDate(l.lastAttemptAt)}` : ''
+                    }`
+                  : 'Chưa làm lần nào'}
+              </small>
             </div>
             <div className="lesson-actions">
               <Link className="primary-btn link-as-btn" to={`/dictation/${l.id}`}>

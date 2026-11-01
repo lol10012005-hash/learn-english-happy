@@ -11,6 +11,9 @@ type Row = {
   timestamps: string | null
   created_at: string
   audio_name: string | null
+  best_score: number | null
+  attempts: number
+  last_at: string | null
 }
 
 const MAX_LESSONS = 200
@@ -31,7 +34,10 @@ export const onRequestGet = async ({
   const userId = data.userId as number
   const { results } = await env.DB.prepare(
     `SELECT l.id, l.title, l.original_text, l.timestamps, l.created_at,
-            a.name AS audio_name
+            a.name AS audio_name,
+            (SELECT MAX(t.score) FROM dictation_attempts t WHERE t.lesson_id = l.id) AS best_score,
+            (SELECT COUNT(*) FROM dictation_attempts t WHERE t.lesson_id = l.id) AS attempts,
+            (SELECT MAX(t.created_at) FROM dictation_attempts t WHERE t.lesson_id = l.id) AS last_at
      FROM dictation_lessons l
      LEFT JOIN sources a ON a.id = l.audio_source_id
      WHERE l.user_id = ?1
@@ -49,6 +55,9 @@ export const onRequestGet = async ({
       hasCues: !!r.timestamps && r.timestamps !== '[]',
       audioName: r.audio_name,
       createdAt: r.created_at,
+      bestScore: r.best_score,
+      attempts: r.attempts,
+      lastAttemptAt: r.last_at,
     })),
   })
 }

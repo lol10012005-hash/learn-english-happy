@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
+import AttemptHistory from '../components/AttemptHistory'
 import AudioPlayer from '../components/AudioPlayer'
+import DictationResult from '../components/DictationResult'
 import TtsPlayer from '../components/TtsPlayer'
-import { fetchLesson, type Lesson } from '../dictation/api'
+import { fetchLesson, saveAttempt, type AttemptSave, type Lesson } from '../dictation/api'
 import {
   deleteCachedAudio,
   getCachedAudio,
   putCachedAudio,
 } from '../dictation/audioCache'
-import { clearDraft, loadDraft, saveDraft } from '../dictation/draft'
+import { errorList, grade, type GradeResult } from '../dictation/diff'
+import { clearDraft, loadDraft, loadStrict, saveDraft, saveStrict } from '../dictation/draft'
 import { countWords } from '../dictation/script'
 import { downloadAudio, getFileMeta } from '../google/drive'
 import { requestAccessToken } from '../google/picker'
@@ -24,6 +27,8 @@ type AudioState =
 
 const mb = (n: number) => (n / 1048576).toFixed(1)
 
+type Submitted = { typed: string; listens: number; result: GradeResult }
+
 export default function DictationPlay() {
   const lessonId = Number(useParams().id)
   const { user } = useAuth()
@@ -37,6 +42,10 @@ export default function DictationPlay() {
   const [draftReady, setDraftReady] = useState(false)
   const [showTotal, setShowTotal] = useState(true)
   const [notice, setNotice] = useState('')
+  const [strict, setStrict] = useState(loadStrict)
+  const [submitted, setSubmitted] = useState<Submitted | null>(null)
+  const [save, setSave] = useState<AttemptSave>({ status: 'saving' })
+  const [historyKey, setHistoryKey] = useState(0)
   const latest = useRef({ text: '', listens: 0 })
 
   // Tải bài
@@ -125,14 +134,42 @@ export default function DictationPlay() {
     }
   }
 
+  async function persistAttempt(s: Submitted) {
+    setSave({ status: 'saving' })
+    try {
+      await saveAttempt({
+        lessonId,
+        typedText: s.typed,
+        listens: s.listens,
+        strict: s.result.strict,
+        counts: s.result.counts,
+        errors: errorList(s.result)
+          .slice(0, 1000)
+          .map((x) => [x.type, x.orig, x.typed]),
+      })
+      setSave({ status: 'saved' })
+      setHistoryKey((k) => k + 1)
+    } catch (e) {
+      setSave({
+        status: 'error',
+        message: e instanceof Error ? e.message : 'Lỗi không xác định',
+      })
+    }
+  }
+
   function handleSubmit() {
+    if (!lesson) return
     saveDraft(userId, lessonId, { text, listens })
-    const n = countWords(text)
-    setNotice(
-      n === 0
-        ? 'Bạn chưa gõ gì cả.'
-        : `Đã lưu bản nháp (${n} từ). Chức năng chấm điểm sẽ có ở bước sau.`,
-    )
+    if (countWords(text) === 0) {
+      setNotice('Bạn chưa gõ gì cả.')
+      return
+    }
+    setNotice('')
+    // Chấm bài ngay trong trình duyệt
+    const result = grade(lesson.text, text, { strict })
+    const s: Submitted = { typed: text, listens, result }
+    setSubmitted(s)
+    void persistAttempt(s)
   }
 
   function handleReset() {
@@ -141,6 +178,7 @@ export default function DictationPlay() {
     setText('')
     setListens(0)
     setNotice('')
+    setSubmitted(null)
   }
 
   if (error) {
@@ -154,6 +192,24 @@ export default function DictationPlay() {
     )
   }
   if (!lesson) return <p className="loading">Đang tải...</p>
+
+  if (submitted) {
+    return (
+      <>
+        <DictationResult
+          title={lesson.title}
+          origText={lesson.text}
+          typedText={submitted.typed}
+          result={submitted.result}
+          save={save}
+          onRetrySave={() => void persistAttempt(submitted)}
+          onEdit={() => setSubmitted(null)}
+          onRestart={handleReset}
+        />
+        <AttemptHistory lessonId={lessonId} reloadKey={historyKey} />
+      </>
+    )
+  }
 
   const typed = countWords(text)
   const total = countWords(lesson.text)
@@ -273,6 +329,17 @@ export default function DictationPlay() {
         />
         <span>Hiện số từ cần gõ</span>
       </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={strict}
+          onChange={(e) => {
+            setStrict(e.target.checked)
+            saveStrict(e.target.checked)
+          }}
+        />
+        <span>Chấm cả dấu câu và chữ hoa</span>
+      </label>
 
       <div className="play-actions">
         <button className="primary-btn" onClick={handleSubmit}>
@@ -287,6 +354,7 @@ export default function DictationPlay() {
           {notice}
         </p>
       )}
+      <AttemptHistory lessonId={lessonId} reloadKey={historyKey} />
     </section>
   )
 }
