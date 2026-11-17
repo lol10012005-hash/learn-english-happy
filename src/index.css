@@ -1107,3 +1107,49 @@ del.w-extra {
   align-items: center;
   gap: 6px;
 }
+
+.dim {
+  opacity: 0.6;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ghost-btn.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
+.ghost-btn.danger {
+  border-color: #e5484d;
+  color: #e5484d;
+}
+
+.excluded {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.tab-pick {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}

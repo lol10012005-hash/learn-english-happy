@@ -47,9 +47,11 @@ export const onRequestGet = async ({
      FROM words w
      JOIN units u ON u.id = w.unit_id
      JOIN books b ON b.id = u.book_id
+     JOIN sources s ON s.id = b.source_id
      LEFT JOIN word_progress p
        ON p.user_id = b.user_id AND p.word_key = w.word_key
-     WHERE b.user_id = ?1 AND w.unit_id IN (${placeholders})
+     WHERE b.user_id = ?1 AND b.archived = 0 AND s.archived = 0
+       AND w.unit_id IN (${placeholders})
      ORDER BY b.position, u.position, w.position`,
   )
     .bind(userId, ...ids)

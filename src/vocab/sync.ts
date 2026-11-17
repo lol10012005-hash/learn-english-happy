@@ -6,6 +6,7 @@ type Options = {
   fileId: string
   data: SheetData
   mappings: Record<string, Mapping>
+  skip?: string[] // tên các tab không thêm (đã xóa hoặc người học bỏ chọn)
   askDelete: (bookName: string, count: number) => boolean
 }
 
@@ -14,12 +15,14 @@ export async function syncSheet({
   fileId,
   data,
   mappings,
+  skip = [],
   askDelete,
 }: Options): Promise<string[]> {
   const lines: string[] = []
 
   for (let i = 0; i < data.tabs.length; i++) {
     const tab = data.tabs[i]
+    if (skip.includes(tab.title)) continue
     const mapping = mappings[tab.title] ?? {}
     const parsed = parseTab(tab.rows, mapping)
 

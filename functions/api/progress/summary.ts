@@ -9,7 +9,8 @@ const MINE = `mine AS (
   FROM words w
   JOIN units u ON u.id = w.unit_id
   JOIN books b ON b.id = u.book_id
-  WHERE b.user_id = ?1
+  JOIN sources s ON s.id = b.source_id
+  WHERE b.user_id = ?1 AND b.archived = 0 AND s.archived = 0
 )`
 
 type DayRow = {
@@ -73,7 +74,9 @@ export const onRequestGet = async ({
          JOIN words w ON w.word_key = p.word_key
          JOIN units u ON u.id = w.unit_id
          JOIN books b ON b.id = u.book_id AND b.user_id = p.user_id
-         WHERE p.user_id = ?1 AND p.wrong_count + p.hint_count > 0
+         JOIN sources s ON s.id = b.source_id
+         WHERE p.user_id = ?1 AND b.archived = 0 AND s.archived = 0
+           AND p.wrong_count + p.hint_count > 0
          GROUP BY p.word_key
          ORDER BY p.wrong_count + p.hint_count DESC, p.word_key
          LIMIT 10`,

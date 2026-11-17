@@ -5,6 +5,7 @@ export type LibraryBook = {
   id: number
   name: string
   mapping: Mapping
+  archived: boolean
   units: LibraryUnit[]
 }
 export type LibrarySource = {
@@ -12,6 +13,8 @@ export type LibrarySource = {
   name: string
   fileId: string
   lastSyncedAt: string | null
+  archived: boolean
+  excludedTabs: string[] // các quyển đã xóa: Đồng bộ lại sẽ không thêm lại
   books: LibraryBook[]
 }
 
@@ -26,8 +29,22 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
+const jsonInit = (method: string, body?: unknown): RequestInit => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: body === undefined ? undefined : JSON.stringify(body),
+})
+
 export function fetchLibrary() {
   return request<{ sources: LibrarySource[] }>('/api/vocab/library')
+}
+
+// Phần đang học: bỏ file và quyển đang ẩn, bỏ file không còn quyển nào
+export function visibleSources(sources: LibrarySource[]): LibrarySource[] {
+  return sources
+    .filter((s) => !s.archived)
+    .map((s) => ({ ...s, books: s.books.filter((b) => !b.archived) }))
+    .filter((s) => s.books.length > 0)
 }
 
 export type SaveBookPayload = {
@@ -57,9 +74,36 @@ export type SaveBookResult = {
 }
 
 export function saveBook(payload: SaveBookPayload) {
-  return request<SaveBookResult>('/api/vocab/sync', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
+  return request<SaveBookResult>('/api/vocab/sync', jsonInit('POST', payload))
+}
+
+// ----- Quản lý thư viện
+
+export function setSourceArchived(id: number, archived: boolean) {
+  return request<{ ok: true }>(`/api/vocab/sources/${id}`, jsonInit('PATCH', { archived }))
+}
+
+export function setBookArchived(id: number, archived: boolean) {
+  return request<{ ok: true }>(`/api/vocab/books/${id}`, jsonInit('PATCH', { archived }))
+}
+
+export function deleteSource(id: number) {
+  return request<{ ok: true }>(`/api/vocab/sources/${id}`, jsonInit('DELETE'))
+}
+
+export function deleteBook(id: number) {
+  return request<{ ok: true }>(`/api/vocab/books/${id}`, jsonInit('DELETE'))
+}
+
+// Cho phép thêm lại một quyển đã xóa (lần Đồng bộ lại kế tiếp sẽ thêm nó)
+export function restoreTab(sourceId: number, tab: string) {
+  return request<{ ok: true }>(
+    `/api/vocab/sources/${sourceId}`,
+    jsonInit('PATCH', { restoreTab: tab }),
+  )
+}
+
+// Ghi nhớ các tab người học không muốn thêm khi chọn Google Sheet
+export function saveExcludedTabs(fileId: string, tabs: string[]) {
+  return request<{ ok: true }>('/api/vocab/excluded', jsonInit('POST', { fileId, tabs }))
 }

@@ -13,7 +13,7 @@ import {
   type Session,
   type StudyWord,
 } from '../study/engine'
-import { fetchLibrary, type LibrarySource } from '../vocab/api'
+import { fetchLibrary, visibleSources, type LibrarySource } from '../vocab/api'
 
 type Phase =
   | { kind: 'select' }
@@ -39,12 +39,14 @@ export default function Study() {
   useEffect(() => {
     fetchLibrary()
       .then((d) => {
-        setSources(d.sources)
+        // Chỉ hiện phần đang học (bỏ file và quyển đã ẩn)
+        const visible = visibleSources(d.sources)
+        setSources(visible)
         // Từ trang Tổng quan bấm "Ôn từ đến hạn": chọn sẵn tất cả unit
         if (review) {
           setSelected(
             new Set(
-              d.sources.flatMap((s) =>
+              visible.flatMap((s) =>
                 s.books.flatMap((b) => b.units.map((u) => u.id)),
               ),
             ),
